@@ -1,0 +1,19 @@
+{
+    "ideas": [
+        {
+            "name": "Idea name 1",
+            "userName": "Username 1",
+            "votes": 67
+        },
+        {
+            "name": "Idea name 2",
+            "userName": "Username 2",
+            "votes": 99
+        },
+        {
+            "name": "Idea name 3",
+            "userName": "Username 3",
+            "votes": 59
+        }
+    ]
+}
