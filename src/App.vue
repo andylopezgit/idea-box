@@ -6,16 +6,23 @@
       <h1 class="mb-5 text-3xl text-center">Idea Box</h1>
 
       <!-- coponente para agregar una idea -->
-      <add-idea 
-        :user="user" 
-        @do-login="doLogin" 
-        @do-logout="doLogout" 
+      <add-idea
+        :user="user"
+        @do-login="doLogin"
+        @do-logout="doLogout"
         @add-idea="addIdea"
       />
       <!-- fin componente para agregar una idea -->
 
       <!-- componete cada idea -->
-      <app-idea v-for="(idea, $index) in ideas" :key="$index" :idea="idea" />
+      <app-idea
+        v-for="(idea, $index) in ideas"
+        :key="$index"
+        :idea="idea"
+        :user="user"
+        @vote-idea="voteIdea"
+        @remove-idea="removeIdea"
+      />
       <!-- fin de componente idea -->
     </div>
   </div>
@@ -24,7 +31,7 @@
 <script>
 import AddIdea from "./components/AddIdea.vue";
 import AppIdea from "./components/AppIdea.vue";
-import seed from "@/seed.json";
+//import seed from "@/seed.json";
 import { ref } from "vue";
 import { auth, db, firebase } from "@/firebase.js";
 export default {
@@ -34,7 +41,25 @@ export default {
     let user = ref(null);
 
     auth.onAuthStateChanged(async (auth) => (user.value = auth ? auth : null));
-    const ideas = ref(seed.ideas);
+    const ideas = ref();
+
+    db.collection("ideas").orderBy("votes", "desc").onSnapshot((snapshot) => {
+      const newIdeas = [];
+      snapshot.docs.forEach((doc) => {
+        let { name, user, userName, votes } = doc.data();
+        let id = doc.id;
+
+        newIdeas.push({
+          name,
+          user,
+          userName,
+          votes,
+          id,
+        });
+        ideas.value = newIdeas;
+      });
+      (error) => console.error(error);
+    });
 
     const doLogin = async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
@@ -46,21 +71,39 @@ export default {
       }
     };
 
+    // guardo la idea en Firestore
     const addIdea = async (data) => {
       try {
-
         await db.collection("ideas").add({
           name: data.value,
           user: user.value.uid,
           userName: user.value.displayName,
-          votes: 0
-        })
-
-      } catch(error) {
-        console.log(error)
+          votes: 0,
+        });
+      } catch (error) {
+        console.log(error);
       }
     };
 
+    const voteIdea = async ({ id, type }) => {
+      try {
+        db.collection("ideas")
+          .doc(id)
+          .update({
+            votes: firebase.firestore.FieldValue.increment(type ? 1 : -1),
+          });
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const removeIdea = async ({id}) => {
+      try {
+        await db.collection("ideas").doc(id).delete()
+      } catch (error) {
+        console.log(error)
+      }
+    };
     const doLogout = async () => {
       try {
         await auth.signOut();
@@ -69,7 +112,7 @@ export default {
       }
     };
 
-    return { ideas, user, doLogin, doLogout, addIdea };
+    return { ideas, user, doLogin, doLogout, addIdea, voteIdea, removeIdea };
   },
 };
 </script>
